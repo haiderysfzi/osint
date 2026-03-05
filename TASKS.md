@@ -41,24 +41,23 @@
 - [x] Implement country detector from phone number
 
 
-## Sprint 3: Scrapers (Name Finding)
+## Sprint 3: OSINT Scrapers (No Third-Party APIs)
 
-### Task 7: Implement Truecaller Scraper
-- [x] Create `src/scrapers/name_scrapers.py`
-- [x] Implement Truecaller API integration (skeleton)
-- [x] Add rate limiting and retry logic
-- [x] Handle authentication if required
+### Task 7: Google Dork Scraper
+- [x] Create `src/scrapers/osint_scrapers.py`
+- [x] Implement DuckDuckGo search (no API key)
+- [x] Add phone number search patterns
+- [x] Extract name from search results
 
-### Task 8: Implement Whitepages Scraper
-- [x] Add Whitepages/Spokeo scraper (skeleton)
-- [x] Implement US/EU phone number lookup
-- [x] Add fallback to alternative sources
+### Task 8: Social Media Scanner
+- [x] Implement Telegram profile check
+- [x] Implement WhatsApp business check
+- [x] Implement Signal profile check
 
-### Task 9: Implement Pakistan Local Scrapers
-- [x] Create `src/scrapers/pakistan.py`
-- [x] Implement PakWheels scraper (skeleton)
-- [x] Implement Jang directory scraper (skeleton)
-- [x] Add other local directories
+### Task 9: Public Data Scrapers
+- [x] Implement Google Docs/Sheets search
+- [x] Implement WHOIS domain search
+- [x] Add Pakistan local sources (PakWheels, Jang)
 
 
 ## Sprint 4: Pipelines (Enrichment)
@@ -112,13 +111,13 @@
 - [ ] Add mock responses for testing
 
 ### Task 17: End-to-End Testing
-- [ ] Start ClickHouse locally
-- [ ] Test full pipeline with sample numbers
-- [ ] Verify data in ClickHouse
-- [ ] Test batch processing
+- [x] Start ClickHouse locally
+- [x] Test full pipeline with sample numbers
+- [x] Verify data in ClickHouse
+- [x] Test batch processing
 
 ### Task 18: Error Handling & Logging
-- [ ] Add comprehensive logging
-- [ ] Handle scraper failures gracefully
+- [x] Add comprehensive logging
+- [x] Handle scraper failures gracefully
 - [ ] Add alerting for failed pipelines
 - [ ] Document error scenarios

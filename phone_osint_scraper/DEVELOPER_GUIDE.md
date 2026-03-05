@@ -1,10 +1,18 @@
 # Developer Guide - Phone OSINT Scraper
 
+## Philosophy
+**No third-party APIs** - Uses real OSINT methods hackers use:
+- Google Dorking (DuckDuckGo HTML)
+- Social Media checks (Telegram, WhatsApp, Signal)
+- Public document search
+- WHOIS domain records
+- Local Pakistan sources (SECP, FBR, classifieds)
+
 ## Prerequisites
 
 - Python 3.11+
 - ClickHouse (running locally or via Docker)
-- Redis (optional, for caching)
+- Redis (optional)
 
 ## Setup
 
@@ -12,52 +20,20 @@
 
 ```bash
 cd phone_osint_scraper
-
-# Create venv (if not exists)
 python3 -m venv venv
-
-# Activate venv
 source venv/bin/activate
-
-# Install dependencies
 pip install -e .
-pip install pandas  # if not auto-installed
+pip install pandas beautifulsoup4 lxml
 ```
 
-### 2. Start ClickHouse (Local)
+### 2. Start ClickHouse
 
 ```bash
-# Using Docker
 cd docker
 docker compose up -d clickhouse
-
-# Or install ClickHouse directly:
-# https://clickhouse.com/docs/en/install
 ```
 
-Wait for ClickHouse to be healthy:
-```bash
-docker ps  # Check status is "healthy"
-```
-
-### 3. Configure Environment
-
-Edit `.env` file:
-```bash
-CLICKHOUSE_HOST=localhost
-CLICKHOUSE_PORT=8123
-CLICKHOUSE_USER=default
-CLICKHOUSE_PASSWORD=osint_password
-CLICKHOUSE_DB=default
-REDIS_HOST=localhost
-REDIS_PORT=6379
-
-# API Keys (get free keys below)
-TRUECALLER_API_KEY=
-NUMVERIFY_API_KEY=
-```
-
-### 4. Initialize Database
+### 3. Initialize Database
 
 ```bash
 python -c "
@@ -82,32 +58,20 @@ CREATE TABLE IF NOT EXISTS phone_osint_results (
 PARTITION BY toYYYYMM(ingested_at)
 ORDER BY (phone, ingested_at)
 ''')
-print('Table created!')
 ch.close()
+print('Done!')
 "
 ```
 
 ## Running Tests
 
-### Test Utils (No API needed)
+### Test Utils
 ```bash
 source venv/bin/activate
 python -c "
 from src.core.utils import PhoneNormalizer, CountryDetector
-print('Normalize +923001234567:', PhoneNormalizer.normalize('+923001234567'))
-print('Detect +923001234567:', CountryDetector.detect('+923001234567'))
-"
-```
-
-### Test ClickHouse Connection
-```bash
-source venv/bin/activate
-python -c "
-from src.core.clickhouse import ClickHouseClient
-ch = ClickHouseClient()
-result = ch.client.query('SELECT 1')
-print('ClickHouse:', result.result_rows)
-ch.close()
+print(PhoneNormalizer.normalize('+923001234567'))
+print(CountryDetector.detect('+923001234567'))
 "
 ```
 
@@ -121,11 +85,14 @@ from src.core.clickhouse import ClickHouseClient
 
 async def test():
     ch = ClickHouseClient()
+    ch.client.command('TRUNCATE TABLE phone_osint_results')
     orch = NameFirstOrchestrator(ch)
+    
     status = await orch.process_phone('+923001234567')
     print(f'Status: {status}')
-    result = ch.query_recent('+923001234567')
-    print(result[['phone', 'owner_name', 'country', 'status']])
+    
+    result = ch.client.query_df('SELECT phone, owner_name, country, status FROM phone_osint_results')
+    print(result)
     ch.close()
 
 asyncio.run(test())
@@ -134,25 +101,17 @@ asyncio.run(test())
 
 ### Using CLI
 ```bash
-# Single phone
-source venv/bin/activate
 python cli.py --phone "+923001234567"
-
-# Batch mode
 python cli.py --batch phones.txt
 ```
 
-## Getting Free API Keys
+## OSINT Methods Used
 
-### Numverify (Free tier: 100 requests/month)
-1. Go to https://numverify.com/documentation
-2. Sign up for free API access
-3. Add key to `.env`: `NUMVERIFY_API_KEY=your_key`
-
-### Truecaller (Requires app installation)
-1. Install Truecaller app on Android
-2. Use their web API (requires authentication)
-3. Add key to `.env`: `TRUECALLER_API_KEY=your_key`
+1. **GoogleDorkScraper** - Searches DuckDuckGo for phone mentions
+2. **SocialMediaScanner** - Checks Telegram/WhatsApp/Signal profiles
+3. **PhoneNumberInfoScraper** - Searches public Google Docs/Sheets
+4. **WHOISScraper** - Checks domain registration records
+5. **PakWheelsScraper** / **JangScraper** - Pakistan classifieds
 
 ## Project Structure
 
@@ -160,28 +119,20 @@ python cli.py --batch phones.txt
 phone_osint_scraper/
 ├── src/
 │   ├── core/
-│   │   ├── config.py        # Settings
-│   │   ├── orchestrator.py  # Main pipeline
-│   │   ├── clickhouse.py    # DB client
-│   │   └── utils.py         # Phone normalization
+│   │   ├── config.py
+│   │   ├── orchestrator.py
+│   │   ├── clickhouse.py
+│   │   └── utils.py
 │   ├── pipelines/
-│   │   ├── name_finder.py   # Find owner name
-│   │   ├── id_enricher.py   # CNIC/SECP/FBR
+│   │   ├── name_finder.py
+│   │   ├── id_enricher.py
 │   │   └── address_enricher.py
 │   ├── scrapers/
-│   │   ├── name_scrapers.py # Truecaller, Numverify, Whitepages
-│   │   └── pakistan.py      # PakWheels, Jang
+│   │   ├── osint_scrapers.py    # Main scrapers
+│   │   ├── name_scrapers.py     # Legacy
+│   │   └── pakistan.py
 │   └── models/
-│       ├── clickhouse_row.py
-│       └── phone_input.py
-├── cli.py                   # CLI interface
-├── batch_processor.py       # Batch processing
-├── .env                     # Environment config
+├── cli.py
+├── .env
 └── pyproject.toml
 ```
-
-## Expected Behavior
-
-- **With API keys**: Fetches real data from providers
-- **Without API keys**: Returns "failed" status (no name found)
-- **All lookups**: Stored in ClickHouse for analytics

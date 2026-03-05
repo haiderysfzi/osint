@@ -8,19 +8,53 @@ from src.core.utils import PhoneNormalizer, CountryDetector
 from src.pipelines.name_finder import NameFinderPipeline
 from src.pipelines.id_enricher import IDEnricher
 from src.pipelines.address_enricher import AddressEnricher
-from src.scrapers.name_scrapers import TruecallerScraper, WhitepagesScraper, NumverifyScraper
+from src.scrapers.osint_scrapers import (
+    GoogleDorkScraper,
+    CarrierLookupScraper,
+    SocialMediaScanner,
+    UsernameCorrelationScraper,
+    WHOISDomainSearch,
+    BreachSearchScraper,
+    PhoneInfogaScraper,
+    PublicRecordsScraper,
+    PhoneMetadataScraper,
+)
 from src.scrapers.pakistan import PakWheelsScraper, JangScraper
 from src.core.config import settings
 
 class NameFirstOrchestrator:
     def __init__(self, clickhouse_client: ClickHouseClient):
         self.clickhouse = clickhouse_client
+        # Use ALL OSINT techniques - try until we get data
         self.name_finder = NameFinderPipeline([
-            TruecallerScraper(settings.TRUECALLER_API_KEY, mock_mode=False),
-            NumverifyScraper(settings.NUMVERIFY_API_KEY),
-            WhitepagesScraper(),
+            # Priority 1: Carrier & Basic Info
+            PhoneInfogaScraper(),  # PhoneInfoga-style comprehensive scan
+            CarrierLookupScraper(),
+            
+            # Priority 2: Social Media
+            SocialMediaScanner(),
+            
+            # Priority 3: Search Engines
+            GoogleDorkScraper(),
+            
+            # Priority 4: Username correlation
+            UsernameCorrelationScraper(),
+            
+            # Priority 5: Domain & WHOIS
+            WHOISDomainSearch(),
+            
+            # Priority 6: Breaches
+            BreachSearchScraper(),
+            
+            # Priority 7: Public Records
+            PublicRecordsScraper(),
+            
+            # Priority 8: Metadata
+            PhoneMetadataScraper(),
+            
+            # Priority 9: Pakistan-specific
             PakWheelsScraper(),
-            JangScraper()
+            JangScraper(),
         ])
         self.id_enricher = IDEnricher()
         self.address_enricher = AddressEnricher()

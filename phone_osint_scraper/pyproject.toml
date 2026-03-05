@@ -4,9 +4,11 @@ version = "0.1.0"
 description = "Production-grade phone OSINT scraper with ClickHouse storage"
 authors = ["OSINT Team"]
 
+[[tool.poetry.packages]]
+include = "src"
+
 [tool.poetry.dependencies]
 python = "^3.11"
-# Verified stable versions based on your pip search results
 clickhouse-connect = "^0.8.18"
 pydantic = "^2.12.5"
 phonenumbers = "^9.0.25"
@@ -14,6 +16,7 @@ aiohttp = "^3.11.2"
 redis = "^7.2.1"
 python-dotenv = "^1.2.2"
 click = "^8.1.8"
+pandas = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"

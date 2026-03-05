@@ -14,5 +14,6 @@ class Settings:
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", 6379))
     
     TRUECALLER_API_KEY: str = os.getenv("TRUECALLER_API_KEY", "")
+    NUMVERIFY_API_KEY: str = os.getenv("NUMVERIFY_API_KEY", "")
 
 settings = Settings()

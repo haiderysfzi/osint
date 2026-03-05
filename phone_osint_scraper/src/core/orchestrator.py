@@ -8,7 +8,7 @@ from src.core.utils import PhoneNormalizer, CountryDetector
 from src.pipelines.name_finder import NameFinderPipeline
 from src.pipelines.id_enricher import IDEnricher
 from src.pipelines.address_enricher import AddressEnricher
-from src.scrapers.name_scrapers import TruecallerScraper, WhitepagesScraper
+from src.scrapers.name_scrapers import TruecallerScraper, WhitepagesScraper, NumverifyScraper
 from src.scrapers.pakistan import PakWheelsScraper, JangScraper
 from src.core.config import settings
 
@@ -16,7 +16,8 @@ class NameFirstOrchestrator:
     def __init__(self, clickhouse_client: ClickHouseClient):
         self.clickhouse = clickhouse_client
         self.name_finder = NameFinderPipeline([
-            TruecallerScraper(settings.TRUECALLER_API_KEY),
+            TruecallerScraper(settings.TRUECALLER_API_KEY, mock_mode=False),
+            NumverifyScraper(settings.NUMVERIFY_API_KEY),
             WhitepagesScraper(),
             PakWheelsScraper(),
             JangScraper()

@@ -18,54 +18,88 @@ class BaseScraper(ABC):
         pass
 
 class TruecallerScraper(BaseScraper):
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str = None, mock_mode: bool = False):
         super().__init__("truecaller")
         self.api_key = api_key
-        self.base_url = "https://search5-noneu.truecaller.com/v2/search" # Example URL
+        self.mock_mode = mock_mode
+        self.base_url = "https://search5-noneu.truecaller.com/v2/search"
 
     async def scrape(self, phone: str) -> Optional[ScraperResult]:
-        # This is a placeholder implementation.
-        # Truecaller search requires complex auth (installationId, etc)
-        # For now, let's simulate the behavior if API key is provided.
+        if self.mock_mode:
+            return ScraperResult(
+                name="Ahmed Khan (Mock)",
+                confidence=0.9,
+                source=self.name,
+                raw_data={"phone": phone, "name": "Ahmed Khan", "type": "Person"}
+            )
+        
         if not self.api_key:
             return None
         
         async with aiohttp.ClientSession() as session:
-            # Simulated request
-            # In a real scenario, you'd use the proper Truecaller API headers
             headers = {
-                "Authorization": f"Bearer {self.api_key}"
+                "Authorization": f"Bearer {self.api_key}",
+                "User-Agent": "Truecaller/11.75.5 (Android;11)"
             }
             params = {
                 "q": phone,
-                "type": "4",
-                "locAddr": "",
-                "placement": "SEARCHRESULTS,HISTORY,DETAILS",
-                "encoding": "json"
+                "type": "4"
             }
             try:
-                # Mocking for now as we don't have a real API key or the actual internal endpoint logic here
-                # async with session.get(self.base_url, headers=headers, params=params) as response:
-                #     if response.status == 200:
-                #         data = await response.json()
-                #         # Extract name logic...
-                #         pass
-                
-                # Mock response for demonstration
-                return ScraperResult(
-                    name="Ahmed Khan (Mock)",
-                    confidence=0.9,
-                    source=self.name,
-                    raw_data={"phone": phone, "name": "Ahmed Khan", "type": "Person"}
-                )
+                async with session.get(self.base_url, headers=headers, params=params) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if data.get('results'):
+                            result = data['results'][0]
+                            return ScraperResult(
+                                name=f"{result.get('firstName', '')} {result.get('lastName', '')}".strip(),
+                                confidence=0.8,
+                                source=self.name,
+                                raw_data=result
+                            )
             except Exception as e:
                 print(f"Truecaller error: {e}")
-                return None
+        return None
 
 class WhitepagesScraper(BaseScraper):
     def __init__(self):
         super().__init__("whitepages")
 
     async def scrape(self, phone: str) -> Optional[ScraperResult]:
-        # Placeholder for Whitepages
+        return None
+
+
+class NumverifyScraper(BaseScraper):
+    def __init__(self, api_key: str = None):
+        super().__init__("numverify")
+        self.api_key = api_key or "demo"  # demo key has limited requests
+        self.base_url = "http://api.numverify.com"
+
+    async def scrape(self, phone: str) -> Optional[ScraperResult]:
+        if not self.api_key:
+            return None
+        
+        # Remove + prefix for API
+        phone_num = phone.lstrip('+')
+        
+        async with aiohttp.ClientSession() as session:
+            params = {
+                "number": phone_num,
+                "access_key": self.api_key
+            }
+            try:
+                async with session.get(f"{self.base_url}/php_helper_script.php", params=params) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if data.get('valid') and data.get('carrier'):
+                            name = data['carrier'].get('name', '')
+                            if name:
+                                return ScraperResult(
+                                    name=name,
+                                    confidence=0.6,
+                                    source=self.name,
+                                    raw_data=data
+                                )
+            except Exception as e:
+                print(f"Numverify error: {e}")
         return None
